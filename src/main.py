@@ -10,7 +10,7 @@ from src.company_recruit_analysis import CompanyRecruitAnalysis
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "").strip()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
 SLACK_CHANNEL_STR = os.environ.get("SLACK_CHANNEL_ID", "C08BRQGQ2VB").strip()
-SLACK_CHANNEL_ID = [ch.strip() for ch in SLACK_CHANNEL_STR.split(",") if ch.strip()]
+SLACK_CHANNEL_ID = ["C08BRQGQ2VB"]
 
 # 求人情報テキストファイル（data フォルダ内）
 MESSAGE_FILE = "data/reqruit.txt"
