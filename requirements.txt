@@ -3,3 +3,4 @@ slack_sdk
 pandas
 numpy
 google-genai
+beautifulsoup4==4.11.1
