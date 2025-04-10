@@ -33,7 +33,7 @@ jobs:
       - name: Commit and Push Summary Results
         uses: EndBug/add-and-commit@v9
         with:
-          add: 'data/summary_result.txt'
+          add: 'data/reqruit.txt'
           message: 'Update summary result - ${{ github.run_number }}'
         env:
           GITHUB_TOKEN: ${{ secrets.RY0_GITHUB_TOKEN }}
