@@ -6,7 +6,7 @@ import argparse
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from src.gemini_slack_poster import GeminiSlackPoster
-from src.company_recruit_analysis import CompanyRecruitAnalysis
+from src.company_recruit_analysis2 import CompanyRecruitAnalysis
 
 # ファイルパスの設定
 REQ_FILE = "data/reqruit.txt"              # 求人情報の入力ファイル（5件分の求人が記載）
