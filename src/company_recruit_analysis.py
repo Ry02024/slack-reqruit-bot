@@ -25,7 +25,7 @@ class CompanyRecruitAnalysis:
     def extract_company_name(self, job_text):
         """
         求人情報テキストから会社名を抽出します。
-        期待フォーマット例: "**株式会社ブレインパッド - …"
+        期待フォーマット例: "5. 国立研究開発法人科学技術振興機構"
         """
         match = re.search(r"\*\*(.+?)\s*[-–]", job_text)
         if match:
@@ -45,6 +45,7 @@ class CompanyRecruitAnalysis:
 2. なぜこの企業がデータサイエンス職を障がい者向けに募集しているのか、現在の日本社会の背景（障がい者雇用促進法、DX推進等）と結び付けた考察
 
 結果は400文字以内で、箇条書きまたは明快な段落でまとめてください。
+なお、回答はマークダウン形式（** やその他の記法）ではなく、プレーンテキスト形式で返してください。
 """
         result = self.chat.send_message(prompt)
         response_text = "".join(part.text for part in result.candidates[0].content.parts if part.text)
