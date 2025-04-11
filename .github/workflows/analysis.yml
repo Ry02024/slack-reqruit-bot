@@ -2,8 +2,11 @@ name: Company Analysis
 
 on:
   schedule:
-    - cron: '0 1-5 * * *'  # UTC 1:00～5:00 = JST 10:00～14:00
+    - cron: '0 1-5 * * *'  # 毎日 UTC 1:00～5:00 = JST 10:00～14:00 に1時間ごとに実行
   workflow_dispatch:
+
+permissions:
+  contents: write  # リポジトリ内のファイル更新に必要な最低限権限
 
 jobs:
   analysis:
@@ -27,5 +30,14 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
         run: |
           python -m src.main --mode analysis
+
+      - name: Commit and Push Analysis Results
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: 'data/analysis_results.json'
+          message: 'Update analysis results - ${{ github.run_number }}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
