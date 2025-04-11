@@ -1,7 +1,6 @@
 import os
-import json
 import requests
-import hashlib
+import re
 from bs4 import BeautifulSoup
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -10,9 +9,8 @@ from google import genai
 class CompanyRecruitAnalysis:
     """
     求人情報のテキスト（1件分）をもとに、対象企業の概要および採用背景（日本の社会状況に基づく考察）を
-    400文字以内で生成し、Slack に投稿するクラス。
-
-    また、各求人の分析結果のハッシュを JSON ファイルに保存することで、重複なく1件ずつ分析を実施できるようにします。
+    400文字以内で生成し、Slack に投稿するクラスです。
+    同一の会社名での重複分析を防ぐため、抽出した会社名をキーとして結果を保存します。
     """
     def __init__(self, api_key, slack_bot_token, slack_channel_id):
         self.client = genai.Client(api_key=api_key, http_options={'api_version': 'v1alpha'})
@@ -23,9 +21,19 @@ class CompanyRecruitAnalysis:
         self.slack_bot_token = slack_bot_token
         self.slack_channel_id = slack_channel_id
 
+    def extract_company_name(self, job_text):
+        """
+        求人情報テキストから会社名を抽出します。
+        期待フォーマット例: "**株式会社ブレインパッド - …"
+        """
+        match = re.search(r"\*\*(.+?)\s*[-–]", job_text)
+        if match:
+            return match.group(1).strip()
+        return None
+
     def analyze_company(self, full_text):
         prompt = f"""
-以下は、障がい者向けのデータサイエンス系求人の要約です：
+以下は、障がい者向けのデータサイエンス系求人の一件分の要約です：
 
 --- 求人情報 ---
 {full_text}
@@ -64,56 +72,40 @@ class CompanyRecruitAnalysis:
                 print(f"❌ 投稿に失敗しました: {data.get('error')} (チャンネル: {channel})")
                 print("詳細:", data)
 
-    def load_analysis_results(self, analysis_file):
-        if os.path.exists(analysis_file):
-            with open(analysis_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return {}
-
-    def save_analysis_results(self, results, analysis_file):
-        with open(analysis_file, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=2, ensure_ascii=False)
-
-    def compute_job_hash(self, job_text):
-        return hashlib.sha256(job_text.encode("utf-8")).hexdigest()
-
-    def split_jobs(self, req_text):
-        # 求人情報は、空行2行で区切られている前提の簡易な分割処理
+    def run_analysis_for_one(self, req_text, analysis_file):
+        """
+        req_text（求人情報全体）を分割し、未分析の求人のうち重複しない会社の求人（上から1件）を
+        分析して Slack に投稿し、その結果を analysis_file に保存します。
+        """
+        # 求人情報は、空行2行で区切られている前提の簡易分割処理
         jobs = [job.strip() for job in req_text.strip().split("\n\n") if job.strip()]
-        return jobs
-
-    def run_analysis_for_one(self, req_file, analysis_file):
-        """
-        req_file（求人情報ファイル）から求人情報を分割し、未分析の求人のうち
-        先頭1件だけを企業分析して Slack に投稿し、結果を analysis_file に保存します。
-        """
-        if not os.path.exists(req_file):
-            print(f"❌ ファイル {req_file} が見つかりません。")
-            return
-
-        with open(req_file, "r", encoding="utf-8") as f:
-            req_text = f.read()
-        jobs = self.split_jobs(req_text)
         if not jobs:
             print("❌ 求人情報が空です。")
             return
 
-        # 分析済み求人結果のロード
-        analysis_results = self.load_analysis_results(analysis_file)
+        # 既存の分析結果を読み込む（会社名をキーとする）
+        analysis_results = {}
+        if os.path.exists(analysis_file):
+            with open(analysis_file, "r", encoding="utf-8") as f:
+                analysis_results = json.load(f)
 
-        # 未分析の求人を抽出
-        unprocessed_jobs = []
+        unprocessed_job = None
         for job in jobs:
-            job_hash = self.compute_job_hash(job)
-            if job_hash not in analysis_results:
-                unprocessed_jobs.append((job_hash, job))
+            company_name = self.extract_company_name(job)
+            if not company_name:
+                print("警告: 会社名が抽出できませんでした。求人をスキップします。")
+                continue
+            if company_name in analysis_results:
+                print(f"既に分析済みの会社 {company_name} をスキップします。")
+                continue
+            unprocessed_job = (company_name, job)
+            break
 
-        if not unprocessed_jobs:
+        if not unprocessed_job:
             print("すべての求人情報は既に分析済みです。")
             return
 
-        # 先頭の未分析求人のみを処理
-        job_hash, job_text = unprocessed_jobs[0]
+        company_name, job_text = unprocessed_job
         analysis_result = self.analyze_company(job_text)
         caution_text = ("※これは本日のウェブサイト情報を Gemini が検索してまとめたものであり、"
                         "内容の正確性を保証するものではありません。興味のある情報はご自身でご確認ください。")
@@ -121,10 +113,11 @@ class CompanyRecruitAnalysis:
         self.post_message_to_slack(final_message)
         print("企業分析結果:\n", final_message)
 
-        # 分析結果をストックに登録
-        analysis_results[job_hash] = {
+        # 分析結果を保存（キーは抽出した会社名）
+        analysis_results[company_name] = {
             "analysis": analysis_result,
             "timestamp": datetime.now(ZoneInfo("Asia/Tokyo")).isoformat()
         }
-        self.save_analysis_results(analysis_results, analysis_file)
+        with open(analysis_file, "w", encoding="utf-8") as f:
+            json.dump(analysis_results, f, indent=2, ensure_ascii=False)
         print("分析結果を保存しました。")
