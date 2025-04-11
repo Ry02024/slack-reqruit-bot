@@ -75,46 +75,60 @@ class CompanyRecruitAnalysis:
 
     def run_analysis_for_one(self, req_text, analysis_file):
         """
-        req_text（求人情報全体）を分割し、未分析の求人のうち重複しない会社の求人（上から1件）を
-        分析して Slack に投稿し、その結果を analysis_file に保存します。
+        req_text（求人情報全体）を分割し、各求人について抽出した会社名が
+        既に analysis_file に保存されている場合は除外し、未分析の求人のうち先頭1件のみを対象として企業分析を実施します。
+        分析結果は Slack に投稿するとともに、analysis_file に会社名をキーとして保存します。
         """
-        # 求人情報は、空行2行で区切られている前提の簡易分割処理
+        # 求人情報を空行2行で分割（簡易な実装例）
         jobs = [job.strip() for job in req_text.strip().split("\n\n") if job.strip()]
         if not jobs:
             print("❌ 求人情報が空です。")
             return
-
-        # 既存の分析結果を読み込む（会社名をキーとする）
+    
+        # 既存の分析結果を JSON ファイルから読み込む（キーはすでに会社名が登録されている）
         analysis_results = {}
         if os.path.exists(analysis_file):
             with open(analysis_file, "r", encoding="utf-8") as f:
                 analysis_results = json.load(f)
-
+    
         unprocessed_job = None
         for job in jobs:
-            company_name = self.extract_company_name(job)
-            if not company_name:
-                print("警告: 会社名が抽出できませんでした。求人をスキップします。")
+            # ここでは正規表現を使う代わりに、固定フォーマットに基づいて会社名を抽出します。
+            # 例えば、求人情報の会社名は "**会社名**:" の形式になっているので、以下のようにシンプルに抽出できます。
+            start = job.find("**")
+            if start == -1:
+                print("警告: 会社名の開始記号 '**' が見つかりません。求人をスキップします。")
                 continue
+            end = job.find("**", start + 2)
+            if end == -1:
+                print("警告: 会社名の終了記号 '**' が見つかりません。求人をスキップします。")
+                continue
+            company_name = job[start+2:end].strip()
+            if not company_name:
+                print("警告: 抽出された会社名が空です。求人をスキップします。")
+                continue
+            # 既に分析済みかチェック（キーは company_name）
             if company_name in analysis_results:
                 print(f"既に分析済みの会社 {company_name} をスキップします。")
                 continue
             unprocessed_job = (company_name, job)
             break
-
+    
         if not unprocessed_job:
             print("すべての求人情報は既に分析済みです。")
             return
-
+    
         company_name, job_text = unprocessed_job
         analysis_result = self.analyze_company(job_text)
-        caution_text = ("※これは本日のウェブサイト情報を Gemini が検索してまとめたものであり、"
-                        "内容の正確性を保証するものではありません。興味のある情報はご自身でご確認ください。")
+        caution_text = (
+            "※これは本日のウェブサイト情報を Gemini が検索してまとめたものであり、"
+            "内容の正確性を保証するものではありません。興味のある情報はご自身でご確認ください。"
+        )
         final_message = f"{analysis_result}\n\n{caution_text}"
         self.post_message_to_slack(final_message)
         print("企業分析結果:\n", final_message)
-
-        # 分析結果を保存（キーは抽出した会社名）
+    
+        # 分析結果を会社名をキーとして保存（ハッシュではなく、抽出された公式な会社名をそのまま使用）
         analysis_results[company_name] = {
             "analysis": analysis_result,
             "timestamp": datetime.now(ZoneInfo("Asia/Tokyo")).isoformat()
