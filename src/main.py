@@ -23,7 +23,7 @@ def main():
     SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "").strip()
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
     SLACK_CHANNEL_STR = os.environ.get("SLACK_CHANNEL_ID", "C08BRQGQ2VB").strip()
-    SLACK_CHANNEL_ID = [ch.strip() for ch in SLACK_CHANNEL_STR.split(",") if ch.strip()]
+    SLACK_CHANNEL_ID = ["C08BRQGQ2VB"]
 
     if not GEMINI_API_KEY or not SLACK_BOT_TOKEN or not SLACK_CHANNEL_ID:
         print("❌ 必要な環境変数が設定されていません。")
