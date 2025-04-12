@@ -106,24 +106,14 @@ class CompanyRecruitAnalysis:
     
         unprocessed_job = None
         for job in jobs:
-            # ここでは正規表現を使う代わりに、固定フォーマットに基づいて会社名を抽出します。
-            # 例えば、求人情報の会社名は "**会社名**:" の形式になっているので、以下のようにシンプルに抽出できます。
-            start = job.find("**")
-            if start == -1:
-                print("警告: 会社名の開始記号 '**' が見つかりません。求人をスキップします。")
-                continue
-            end = job.find("**", start + 2)
-            if end == -1:
-                print("警告: 会社名の終了記号 '**' が見つかりません。求人をスキップします。")
-                continue
-            company_name = job[start+2:end].strip()
+            company_name = self.extract_company_name(job)
             if not company_name:
-                print("警告: 抽出された会社名が空です。求人をスキップします。")
+                print("警告: 会社名が抽出できませんでした。求人をスキップします。")
                 continue
-            # 既に分析済みかチェック（キーは company_name）
             if company_name in analysis_results:
                 print(f"既に分析済みの会社 {company_name} をスキップします。")
                 continue
+            # 未分析の求人が見つかったらその求人を対象とする
             unprocessed_job = (company_name, job)
             break
     
