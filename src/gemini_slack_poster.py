@@ -113,7 +113,13 @@ class GeminiSlackPoster:
         return "\n".join(ref_lines)
 
     def search_info(self, user_query):
-        response = self.search_client.send_message(user_query)
+        # 追加指示：求人掲載サイト（Indeed、求人ボックス、障害者転職エージェント ハッピー、スグJOB など）の名称は出力結果に含めず、
+        # 実際に求人を募集している企業の情報のみを対象に情報を生成するように指示する。
+        enhanced_query = (
+            f"{user_query}\n"
+            "注意：求人掲載サイトの名称は出力結果に含めず、実際に求人を出している企業の正式名称のみを使用してください。"
+        )
+        response = self.search_client.send_message(enhanced_query)
         original_text = ""
         for part in response.candidates[0].content.parts:
             if part.text:
