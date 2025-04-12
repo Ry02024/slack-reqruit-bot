@@ -41,6 +41,7 @@ class CompanyRecruitAnalysis:
         remaining = parts[1].strip()  # 例: "日揮パラレルテクノロジーズ株式会社 - データサイエンティスト"
         # 次に、ハイフン（-）より前の部分を会社名として取得する
         company = remaining.split("-", 1)[0].strip()
+        print(f"✅ 抽出した企業名:{response_text}")
         return company
 
     def analyze_company(self, full_text):
