@@ -24,13 +24,24 @@ class CompanyRecruitAnalysis:
 
     def extract_company_name(self, job_text):
         """
-        求人情報テキストから会社名を抽出します。
-        期待フォーマット例: "5. 国立研究開発法人科学技術振興機構"
+        求人情報テキストの最初の行から、番号とピリオドを除去し、ハイフンより前の部分を
+        会社名として抽出します。
+        期待フォーマット例: "5. 日揮パラレルテクノロジーズ株式会社 - データサイエンティスト"
+        → 結果: "日揮パラレルテクノロジーズ株式会社"
         """
-        match = re.search(r"\*\*(.+?)\s*[-–]", job_text)
-        if match:
-            return match.group(1).strip()
-        return None
+        # 求人情報の最初の行を取得
+        lines = job_text.splitlines()
+        if not lines:
+            return None
+        first_line = lines[0]
+        # まず、番号とドット（"5." の部分）を除去する
+        parts = first_line.split(".", 1)
+        if len(parts) < 2:
+            return None
+        remaining = parts[1].strip()  # 例: "日揮パラレルテクノロジーズ株式会社 - データサイエンティスト"
+        # 次に、ハイフン（-）より前の部分を会社名として取得する
+        company = remaining.split("-", 1)[0].strip()
+        return company
 
     def analyze_company(self, full_text):
         prompt = f"""
