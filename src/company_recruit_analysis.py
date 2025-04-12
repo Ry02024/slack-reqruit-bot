@@ -129,7 +129,6 @@ class CompanyRecruitAnalysis:
         )
         final_message = f"{analysis_result}\n\n{caution_text}"
         self.post_message_to_slack(final_message)
-        print("企業分析結果:\n", final_message)
     
         # 分析結果を会社名をキーとして保存（ハッシュではなく、抽出された公式な会社名をそのまま使用）
         analysis_results[company_name] = {
