@@ -24,24 +24,37 @@ class CompanyRecruitAnalysis:
 
     def extract_company_name(self, job_text):
         """
-        求人情報テキストの最初の行から、番号とピリオドを除去し、ハイフンより前の部分を
+        求人情報テキストの最初の行から、番号とピリオドを除去し、
+        ハイフン（"-"）より前の部分または全体から、先頭にある「🏢」などの絵文字を除去した上で
         会社名として抽出します。
-        期待フォーマット例: "5. 日揮パラレルテクノロジーズ株式会社 - データサイエンティスト"
-        → 結果: "日揮パラレルテクノロジーズ株式会社"
+        
+        期待フォーマット例: 
+            "3. 🏢 日本航空株式会社(JAL)"
+        → 結果: "日本航空株式会社(JAL)"
         """
         # 求人情報の最初の行を取得
         lines = job_text.splitlines()
         if not lines:
             return None
-        first_line = lines[0]
-        # まず、番号とドット（"5." の部分）を除去する
+        first_line = lines[0].strip()  # 例: "3. 🏢 日本航空株式会社(JAL)"
+        
+        # 番号とドットを除去する
         parts = first_line.split(".", 1)
         if len(parts) < 2:
             return None
-        remaining = parts[1].strip()  # 例: "日揮パラレルテクノロジーズ株式会社 - データサイエンティスト"
-        # 次に、ハイフン（-）より前の部分を会社名として取得する
-        company = remaining.split("-", 1)[0].strip()
-        print(f"✅ 抽出した企業名:{company}")
+        remaining = parts[1].strip()  # 例: "🏢 日本航空株式会社(JAL)"
+        
+        # ハイフンがあれば、ハイフンより前を企業名とみなす（企業名にハイフンがない場合は全体）
+        if "-" in remaining:
+            company = remaining.split("-", 1)[0].strip()
+        else:
+            company = remaining.strip()
+        
+        # 先頭にある絵文字（ここでは "🏢" を例として）を除去する
+        # lstrip() は指定文字列が連続している分を取り除くので、十分
+        company = company.lstrip("🏢").strip()
+        
+        print(f"✅ 抽出した企業名: {company}")
         return company
 
     def analyze_company(self, full_text):
@@ -56,6 +69,7 @@ class CompanyRecruitAnalysis:
     
     【期待する出力フォーマット例】
     --------------------------------------------------
+    企業名
     🏢 企業概要：
         - 事業内容：○○（例：デジタルマーケティング、データ活用サービスなど）
         - 規模：○○（例：従業員数○○名など）
